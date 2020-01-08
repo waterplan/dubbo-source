@@ -249,8 +249,10 @@ public class ProxyFactoryBean extends ProxyCreatorSupport
 	@Override
 	@Nullable
 	public Object getObject() throws BeansException {
+		//通过获取该FactoryBean的interceptors名称来创建整个advisor
 		initializeAdvisorChain();
 		if (isSingleton()) {
+			//如果配置的代理是单例的，则获取单例代理实列
 			return getSingletonInstance();
 		}
 		else {
@@ -323,10 +325,14 @@ public class ProxyFactoryBean extends ProxyCreatorSupport
 				if (targetClass == null) {
 					throw new FactoryBeanNotInitializedException("Cannot determine target class for proxy");
 				}
+				//获取这个类所有接口，包括其父类接口，并且将其设置到接口集合中，因为当前类是否实现某个接口
+				//对于选择采用哪种代理方法处理重要，比如当前类是否某个接口的实现类，所以选择jdk动态代理
 				setInterfaces(ClassUtils.getAllInterfacesForClass(targetClass, this.proxyClassLoader));
 			}
+			//设置冻结标志，一旦冻结，则不能改变Advisor
 			// Initialize the shared singleton instance.
 			super.setFrozen(this.freezeProxy);
+			//创建并获取代理实列
 			this.singletonInstance = getProxy(createAopProxy());
 		}
 		return this.singletonInstance;
