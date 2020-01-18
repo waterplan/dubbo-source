@@ -495,14 +495,23 @@ public class DispatcherServlet extends FrameworkServlet {
 	 * <p>May be overridden in subclasses in order to initialize further strategy objects.
 	 */
 	protected void initStrategies(ApplicationContext context) {
+		//初始化MultipartResolver
 		initMultipartResolver(context);
+		//初始化localeResolver
 		initLocaleResolver(context);
+		//初始化ThemeResolver
 		initThemeResolver(context);
+		//初始化HandlerMappings
 		initHandlerMappings(context);
+		//初始化HandlerAdapters
 		initHandlerAdapters(context);
+		//初始化HandlerExceptionResolvers
 		initHandlerExceptionResolvers(context);
+		//初始化RequestToViewNameTranslator
 		initRequestToViewNameTranslator(context);
+		//初始化ViewResolvers
 		initViewResolvers(context);
+		//初始化FlashMapManger
 		initFlashMapManager(context);
 	}
 
@@ -881,8 +890,7 @@ public class DispatcherServlet extends FrameworkServlet {
 
 
 	/**
-	 * Exposes the DispatcherServlet-specific request attributes and delegates to {@link #doDispatch}
-	 * for the actual dispatching.
+	 * 为处理请求做准备工作
 	 */
 	@Override
 	protected void doService(HttpServletRequest request, HttpServletResponse response) throws Exception {
@@ -957,20 +965,25 @@ public class DispatcherServlet extends FrameworkServlet {
 			Exception dispatchException = null;
 
 			try {
+				//如果是multipartContent类型的request则转换request为MultipartHttpServletRequest类型的
 				processedRequest = checkMultipart(request);
 				multipartRequestParsed = (processedRequest != request);
 
 				// Determine handler for the current request.
+				//根据处理器映射的配置，获取处理器执行链
 				mappedHandler = getHandler(processedRequest);
 				if (mappedHandler == null) {
+					//如果没有发现任何处理器，则发送错误信息
 					noHandlerFound(processedRequest, response);
 					return;
 				}
 
 				// Determine handler adapter for the current request.
+				//根据当前handler寻找对应的HandlerAdapter
 				HandlerAdapter ha = getHandlerAdapter(mappedHandler.getHandler());
 
 				// Process last-modified header, if supported by the handler.
+				//如果当前handler支持last-modified头处理
 				String method = request.getMethod();
 				boolean isGet = "GET".equals(method);
 				if (isGet || "HEAD".equals(method)) {
@@ -982,12 +995,14 @@ public class DispatcherServlet extends FrameworkServlet {
 						return;
 					}
 				}
-
+					//开始调用拦截器链
 				if (!mappedHandler.applyPreHandle(processedRequest, response)) {
 					return;
 				}
 
 				// Actually invoke the handler.
+				//通过获取的处理器适配代理调用处理器，处理器适配器和处理类型是成对出现的。
+				//因为处理器适配器知道如何调用它所支持的处理器
 				mv = ha.handle(processedRequest, response, mappedHandler.getHandler());
 
 				if (asyncManager.isConcurrentHandlingStarted()) {
@@ -995,6 +1010,7 @@ public class DispatcherServlet extends FrameworkServlet {
 				}
 
 				applyDefaultViewName(processedRequest, mv);
+				//调用后置拦截器
 				mappedHandler.applyPostHandle(processedRequest, response, mv);
 			}
 			catch (Exception ex) {
@@ -1023,6 +1039,7 @@ public class DispatcherServlet extends FrameworkServlet {
 			}
 			else {
 				// Clean up any resources used by a multipart request.
+				//清除多部资源
 				if (multipartRequestParsed) {
 					cleanupMultipart(processedRequest);
 				}
@@ -1034,7 +1051,9 @@ public class DispatcherServlet extends FrameworkServlet {
 	 * Do we need view name translation?
 	 */
 	private void applyDefaultViewName(HttpServletRequest request, @Nullable ModelAndView mv) throws Exception {
+		//视图名称转换应用于需要添加前缀后缀的情况
 		if (mv != null && !mv.hasView()) {
+			//如果控制器没有返回任务逻辑视图名，则会通过默认的视图逻辑返回
 			String defaultViewName = getDefaultViewName(request);
 			if (defaultViewName != null) {
 				mv.setViewName(defaultViewName);
@@ -1054,10 +1073,13 @@ public class DispatcherServlet extends FrameworkServlet {
 
 		if (exception != null) {
 			if (exception instanceof ModelAndViewDefiningException) {
+				//这个异常用于跳过后续处理过程，直接进入视图解析和现实阶段
 				logger.debug("ModelAndViewDefiningException encountered", exception);
 				mv = ((ModelAndViewDefiningException) exception).getModelAndView();
 			}
 			else {
+				//如果产生没有被处理的任意异常，则调用处理器异常解析器，获取异常情况下的模型和视图，
+				//然后进入时解析的显示阶段
 				Object handler = (mappedHandler != null ? mappedHandler.getHandler() : null);
 				mv = processHandlerException(request, response, handler, exception);
 				errorView = (mv != null);
@@ -1066,12 +1088,14 @@ public class DispatcherServlet extends FrameworkServlet {
 
 		// Did the handler return a view to render?
 		if (mv != null && !mv.wasCleared()) {
+			//如果返回一个视图，则进行视图解析和显示， 处理页面跳转
 			render(mv, request, response);
 			if (errorView) {
 				WebUtils.clearErrorRequestAttributes(request);
 			}
 		}
 		else {
+			//如果没有返回一个视图，则不进行视图解析和显示
 			if (logger.isDebugEnabled()) {
 				logger.debug("Null ModelAndView returned to DispatcherServlet with name '" + getServletName() +
 						"': assuming HandlerAdapter completed request handling");
@@ -1084,6 +1108,7 @@ public class DispatcherServlet extends FrameworkServlet {
 		}
 
 		if (mappedHandler != null) {
+			//完成处理激活触发器 
 			mappedHandler.triggerAfterCompletion(request, response, null);
 		}
 	}

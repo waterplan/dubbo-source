@@ -133,6 +133,8 @@ public class HandlerExecutionChain {
 		if (!ObjectUtils.isEmpty(interceptors)) {
 			for (int i = 0; i < interceptors.length; i++) {
 				HandlerInterceptor interceptor = interceptors[i];
+				//异常调用前置拦截器，如果有任意拦截器返回false,则结束整个流程，反序
+				//调用前面执行过的拦截器的后置拦截，然后返回并且停止处理流程
 				if (!interceptor.preHandle(request, response, this.handler)) {
 					triggerAfterCompletion(request, response, null);
 					return false;
@@ -148,11 +150,13 @@ public class HandlerExecutionChain {
 	 */
 	void applyPostHandle(HttpServletRequest request, HttpServletResponse response, @Nullable ModelAndView mv)
 			throws Exception {
-
+		
 		HandlerInterceptor[] interceptors = getInterceptors();
 		if (!ObjectUtils.isEmpty(interceptors)) {
 			for (int i = interceptors.length - 1; i >= 0; i--) {
 				HandlerInterceptor interceptor = interceptors[i];
+				//反序调用后置拦截器，因为后置拦截器用于解释资源，所以如果初始化资源时
+				//采用正序初始化，那么在清除资源时最好进行反序调用，已解决资源依赖的顺序问题
 				interceptor.postHandle(request, response, this.handler, mv);
 			}
 		}
